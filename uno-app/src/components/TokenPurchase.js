@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { blockchainAPI } from '../services/api';
+import { purchaseTokens } from '../services/api';
 
 const TokenPurchase = ({ address, onPurchaseComplete }) => {
   const [amount, setAmount] = useState('');
@@ -21,7 +21,7 @@ const TokenPurchase = ({ address, onPurchaseComplete }) => {
     setStatus({ type: 'info', message: 'Processing purchase...' });
 
     try {
-      const result = await blockchainAPI.purchaseTokens(parseFloat(amount), address);
+      const result = await purchaseTokens(parseFloat(amount), address);
       
       setStatus({ 
         type: 'success', 
@@ -33,6 +33,34 @@ const TokenPurchase = ({ address, onPurchaseComplete }) => {
       }
       
       setAmount('');
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoPurchase = async () => {
+    if (!address) {
+      setStatus({ type: 'error', message: 'Please connect your wallet first' });
+      return;
+    }
+
+    setLoading(true);
+    setStatus({ type: 'info', message: 'Getting demo GT tokens...' });
+
+    try {
+      // Use a small amount for demo (0.1 USDT = 1 GT)
+      const result = await purchaseTokens(0.1, address);
+      
+      setStatus({ 
+        type: 'success', 
+        message: `Demo GT tokens received! TX: ${result.txHash.slice(0, 10)}...` 
+      });
+      
+      if (onPurchaseComplete) {
+        onPurchaseComplete(result);
+      }
     } catch (error) {
       setStatus({ type: 'error', message: error.message });
     } finally {
@@ -60,19 +88,37 @@ const TokenPurchase = ({ address, onPurchaseComplete }) => {
         />
       </div>
       
-      <button 
-        className="btn btn-success" 
-        onClick={handlePurchase}
-        disabled={loading || !address || !amount}
-      >
-        {loading ? (
-          <>
-            <span className="loading"></span> Purchasing...
-          </>
-        ) : (
-          'Buy GT Tokens'
-        )}
-      </button>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+        <button 
+          className="btn btn-success" 
+          onClick={handlePurchase}
+          disabled={loading || !address || !amount}
+          style={{ flex: 1 }}
+        >
+          {loading ? (
+            <>
+              <span className="loading"></span> Purchasing...
+            </>
+          ) : (
+            'Buy GT Tokens'
+          )}
+        </button>
+        
+        <button 
+          className="btn btn-secondary" 
+          onClick={handleDemoPurchase}
+          disabled={loading || !address}
+          style={{ flex: 1 }}
+        >
+          {loading ? (
+            <>
+              <span className="loading"></span> Getting Demo...
+            </>
+          ) : (
+            '🎮 Get Demo GT (0.1 USDT)'
+          )}
+        </button>
+      </div>
       
       {status && (
         <div className={`status ${status.type}`}>
@@ -85,6 +131,17 @@ const TokenPurchase = ({ address, onPurchaseComplete }) => {
           ⚠️ Connect your wallet to purchase tokens
         </div>
       )}
+      
+      <div style={{ 
+        background: '#f8f9fa', 
+        padding: '10px', 
+        borderRadius: '5px', 
+        marginTop: '10px',
+        fontSize: '14px',
+        color: '#666'
+      }}>
+        <strong>💡 Demo Mode:</strong> Use "Get Demo GT" to quickly get 1 GT token for testing. This uses 0.1 USDT from your wallet.
+      </div>
     </div>
   );
 };

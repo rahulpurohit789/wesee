@@ -102,4 +102,34 @@ router.post('/result', async (req, res) => {
   }
 });
 
+// POST /match/stake
+router.post('/stake', async (req, res) => {
+  try {
+    const { matchId } = req.body;
+    
+    // Validate required parameters
+    if (!matchId) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'matchId is required'
+      });
+    }
+    
+    console.log(`[API] Staking for match ${matchId}`);
+    
+    // Stake for the match
+    const result = await blockchainService.stakeMatch(matchId);
+    
+    res.json(result);
+    
+  } catch (error) {
+    console.error('[API] Match stake endpoint error:', error.message);
+    res.status(500).json({
+      status: 'error',
+      message: 'Stake failed',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

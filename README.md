@@ -234,6 +234,8 @@ PORT=3000
 - ✅ MetaMask wallet integration
 - ✅ Real-time game updates
 - ✅ Transaction status tracking
+- ✅ Demo mode for easy testing
+- ✅ Quick GT token acquisition for testing
 
 ## 🚀 Deployment
 

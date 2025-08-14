@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import UNOCard from './UNOCard';
+import StakingInterface from './StakingInterface';
 import { 
   generateDeck, 
   shuffleDeck, 
@@ -9,7 +10,7 @@ import {
   getNextPlayer,
   generateMatchId 
 } from '../utils/gameLogic';
-import { blockchainAPI } from '../services/api';
+import { createMatch, commitResult, stakeMatch } from '../services/api';
 
 const GameBoard = ({ player1Address, player2Address, stake, onGameEnd }) => {
   const [gameState, setGameState] = useState({
@@ -20,7 +21,8 @@ const GameBoard = ({ player1Address, player2Address, stake, onGameEnd }) => {
     currentColor: null,
     matchId: null,
     gameStarted: false,
-    winner: null
+    winner: null,
+    isStaked: false
   });
   
   const [loading, setLoading] = useState(false);
@@ -36,13 +38,13 @@ const GameBoard = ({ player1Address, player2Address, stake, onGameEnd }) => {
       const matchId = generateMatchId();
       
       // Create match on blockchain
-      const matchResult = await blockchainAPI.createMatch(
+      const matchResult = await createMatch({
         matchId,
-        player1Address,
-        player2Address,
+        p1: player1Address,
+        p2: player2Address,
         stake,
-        true // autoStake
-      );
+        autoStake: true
+      });
 
       // Initialize game state
       const deck = shuffleDeck(generateDeck());
@@ -60,7 +62,8 @@ const GameBoard = ({ player1Address, player2Address, stake, onGameEnd }) => {
         currentColor,
         matchId,
         gameStarted: true,
-        winner: null
+        winner: null,
+        isStaked: false
       });
 
       setStatus({ type: 'success', message: 'Game started! Player 1 goes first.' });
@@ -96,9 +99,10 @@ const GameBoard = ({ player1Address, player2Address, stake, onGameEnd }) => {
       
       if (isWinner) {
         // Commit result to blockchain
-        await blockchainAPI.commitResult(gameState.matchId, 
-          gameState.currentPlayer === 0 ? player1Address : player2Address
-        );
+        await commitResult({
+          matchId: gameState.matchId,
+          winner: gameState.currentPlayer === 0 ? player1Address : player2Address
+        });
         
         setGameState(prev => ({
           ...prev,
@@ -133,6 +137,17 @@ const GameBoard = ({ player1Address, player2Address, stake, onGameEnd }) => {
       setStatus({ type: 'error', message: error.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle staking
+  const handleStake = async (matchId) => {
+    try {
+      const result = await stakeMatch(matchId);
+      setGameState(prev => ({ ...prev, isStaked: true }));
+      setStatus({ type: 'success', message: 'Stake successful! You can now play.' });
+    } catch (error) {
+      setStatus({ type: 'error', message: error.message });
     }
   };
 
@@ -175,60 +190,73 @@ const GameBoard = ({ player1Address, player2Address, stake, onGameEnd }) => {
         <p>Cards: {gameState.hands[0].length}</p>
       </div>
 
-      {/* Game Center */}
-      <div className="game-center">
-        <h2>🎮 UNO Game</h2>
+             {/* Game Center */}
+       <div className="game-center">
+         <h2>🎮 UNO Game</h2>
+         
+         {!gameState.gameStarted ? (
+           <div>
+             <p>Stake: {stake} GT</p>
+             <button 
+               className="btn btn-success" 
+               onClick={startGame}
+               disabled={loading}
+             >
+               {loading ? 'Starting...' : 'Start Game'}
+             </button>
+           </div>
+         ) : (
+           <div>
+             {/* Staking Interface */}
+             <StakingInterface
+               matchId={gameState.matchId}
+               stakeAmount={stake}
+               onStake={handleStake}
+               isStaked={gameState.isStaked}
+               disabled={loading}
+             />
+             
+             {gameState.isStaked && (
+               <div>
+                 <h3>Current Player: {gameState.currentPlayer + 1}</h3>
+                 
+                 {/* Top Card */}
+                 {gameState.topCard && (
+                   <div style={{ margin: '20px 0' }}>
+                     <h4>Top Card:</h4>
+                     <UNOCard card={gameState.topCard} disabled={true} />
+                     <p>Current Color: <strong>{gameState.currentColor}</strong></p>
+                   </div>
+                 )}
+                 
+                 {/* Game Actions */}
+                 <div style={{ margin: '20px 0' }}>
+                   <button 
+                     className="btn btn-secondary" 
+                     onClick={drawCard}
+                     disabled={loading || gameState.winner !== null}
+                   >
+                     Draw Card
+                   </button>
+                 </div>
+                 
+                 {/* Game Status */}
+                 {gameState.winner !== null && (
+                   <div className="status success">
+                     🎉 Player {gameState.winner + 1} wins the game!
+                   </div>
+                 )}
+               </div>
+             )}
         
-        {!gameState.gameStarted ? (
-          <div>
-            <p>Stake: {stake} GT</p>
-            <button 
-              className="btn btn-success" 
-              onClick={startGame}
-              disabled={loading}
-            >
-              {loading ? 'Starting...' : 'Start Game'}
-            </button>
-          </div>
-        ) : (
-          <div>
-            <h3>Current Player: {gameState.currentPlayer + 1}</h3>
-            
-            {/* Top Card */}
-            {gameState.topCard && (
-              <div style={{ margin: '20px 0' }}>
-                <h4>Top Card:</h4>
-                <UNOCard card={gameState.topCard} disabled={true} />
-                <p>Current Color: <strong>{gameState.currentColor}</strong></p>
-              </div>
-            )}
-            
-            {/* Game Actions */}
-            <div style={{ margin: '20px 0' }}>
-              <button 
-                className="btn btn-secondary" 
-                onClick={drawCard}
-                disabled={loading || gameState.winner !== null}
-              >
-                Draw Card
-              </button>
+                  {status && (
+            <div className={`status ${status.type}`}>
+              {status.message}
             </div>
-            
-            {/* Game Status */}
-            {gameState.winner !== null && (
-              <div className="status success">
-                🎉 Player {gameState.winner + 1} wins the game!
-              </div>
-            )}
-          </div>
-        )}
-        
-        {status && (
-          <div className={`status ${status.type}`}>
-            {status.message}
-          </div>
-        )}
-      </div>
+          )}
+           </div>
+         )}
+        </div>
 
       {/* Player 2 Hand */}
       <div className="player-hand">

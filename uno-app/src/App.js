@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import WalletConnect from './components/WalletConnect';
 import TokenPurchase from './components/TokenPurchase';
 import GameBoard from './components/GameBoard';
-import { blockchainAPI } from './services/api';
+  import DemoMode from './components/DemoMode';
+import { checkHealth, getApiInfo } from './services/api';
 
 function App() {
   const [walletConnected, setWalletConnected] = useState(false);
@@ -22,8 +23,8 @@ function App() {
 
   const checkAPIStatus = async () => {
     try {
-      const health = await blockchainAPI.healthCheck();
-      const info = await blockchainAPI.getInfo();
+      const health = await checkHealth();
+      const info = await getApiInfo();
       
       setApiStatus({
         connected: health.status === 'success',
@@ -78,23 +79,31 @@ function App() {
         <p>Play UNO with blockchain rewards and smart contract integration</p>
       </header>
 
-      {/* API Status */}
-      <div className="card">
-        <h3>🔌 API Status</h3>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <div className={`status ${apiStatus.connected ? 'success' : 'error'}`}>
-            {apiStatus.connected ? '✅ API Connected' : '❌ API Disconnected'}
-          </div>
-          <div className={`status ${apiStatus.configured ? 'success' : 'warning'}`}>
-            {apiStatus.configured ? '✅ Blockchain Configured' : '⚠️ Blockchain Not Configured'}
-          </div>
-        </div>
-        {!apiStatus.connected && (
-          <p style={{ marginTop: '10px', color: '#dc3545' }}>
-            Make sure your blockchain API is running on http://localhost:3000
-          </p>
-        )}
-      </div>
+             {/* API Status */}
+       <div className="card">
+         <h3>🔌 API Status</h3>
+         <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+           <div className={`status ${apiStatus.connected ? 'success' : 'error'}`}>
+             {apiStatus.connected ? '✅ API Connected' : '❌ API Disconnected'}
+           </div>
+           <div className={`status ${apiStatus.configured ? 'success' : 'warning'}`}>
+             {apiStatus.configured ? '✅ Blockchain Configured' : '⚠️ Blockchain Not Configured'}
+           </div>
+           {!apiStatus.configured && (
+             <div className="status info">
+               🎮 Demo Mode Active
+             </div>
+           )}
+         </div>
+         {!apiStatus.connected && (
+           <p style={{ marginTop: '10px', color: '#dc3545' }}>
+             Make sure your blockchain API is running on http://localhost:3000
+           </p>
+         )}
+       </div>
+
+       {/* Demo Mode Info */}
+       <DemoMode isActive={!apiStatus.configured} />
 
       {/* Wallet Connection */}
       <WalletConnect
@@ -110,36 +119,50 @@ function App() {
         onPurchaseComplete={handlePurchaseComplete}
       />
 
-      {/* Game Section */}
-      <div className="card">
-        <h3>🎯 Start New Game</h3>
-        {!gameState.gameStarted ? (
-          <div>
-            <p>Ready to play UNO? Connect your wallet and start a new game!</p>
-            <button 
-              className="btn btn-success" 
-              onClick={startNewGame}
-              disabled={!walletConnected}
-            >
-              Start New Game
-            </button>
-          </div>
-        ) : (
-          <div>
-            <h4>Game Details:</h4>
-            <p><strong>Player 1:</strong> {gameState.player1Address}</p>
-            <p><strong>Player 2:</strong> {gameState.player2Address}</p>
-            <p><strong>Stake:</strong> {gameState.stake} GT</p>
-            
-            <button 
-              className="btn btn-secondary" 
-              onClick={() => setGameState(prev => ({ ...prev, gameStarted: false }))}
-            >
-              Cancel Game
-            </button>
-          </div>
-        )}
-      </div>
+             {/* Game Section */}
+       <div className="card">
+         <h3>🎯 Start New Game</h3>
+         {!gameState.gameStarted ? (
+           <div>
+             <p>Ready to play UNO? Connect your wallet and start a new game!</p>
+             <div style={{ 
+               background: '#f8f9fa', 
+               padding: '15px', 
+               borderRadius: '8px',
+               marginBottom: '15px'
+             }}>
+               <h4>💰 Staking Information:</h4>
+               <ul style={{ textAlign: 'left', margin: '10px 0' }}>
+                 <li><strong>Stake Amount:</strong> {gameState.stake} GT per player</li>
+                 <li><strong>Total Pool:</strong> {gameState.stake * 2} GT (both players)</li>
+                 <li><strong>Winner Gets:</strong> All staked tokens</li>
+               </ul>
+             </div>
+             <button 
+               className="btn btn-success" 
+               onClick={startNewGame}
+               disabled={!walletConnected}
+             >
+               Start New Game
+             </button>
+           </div>
+         ) : (
+           <div>
+             <h4>Game Details:</h4>
+             <p><strong>Player 1:</strong> {gameState.player1Address}</p>
+             <p><strong>Player 2:</strong> {gameState.player2Address}</p>
+             <p><strong>Stake:</strong> {gameState.stake} GT per player</p>
+             <p><strong>Total Pool:</strong> {gameState.stake * 2} GT</p>
+             
+             <button 
+               className="btn btn-secondary" 
+               onClick={() => setGameState(prev => ({ ...prev, gameStarted: false }))}
+             >
+               Cancel Game
+             </button>
+           </div>
+         )}
+       </div>
 
       {/* Game Board */}
       {gameState.gameStarted && (
